@@ -1,0 +1,52 @@
+<html>
+<head>
+<title>My Chat</title>
+<script src="http://192.168.9.103:8080/socket.io/socket.io.js"></script>
+<script>
+var server = io.connect("http://192.168.9.103:8080", {query: "name=" + nickname});
+
+server.on("receive-message", function(name, message) {
+	var newElement = document.createElement('p');
+	newElement.innerHTML = "&nbsp;<b>" + name + "		: " + "</b>" + message;
+	document.getElementById("messageDiv").appendChild(newElement);
+	document.getElementById("messageDiv").scrollTop = document.getElementById("messageDiv").scrollHeight;
+});
+	
+function sendMessage(textbox, evt) {
+	
+	var charCode = evt.which || event.keyCode;
+
+	if (charCode == 13 && textbox.value.trim().length > 0) {
+		if (!nickname) {
+			getName();
+		}
+		server.emit("send-message", {name: nickname, message: textbox.value});
+		textbox.value = '';
+	}
+}
+
+var nickname;
+getName();
+
+function getName() {
+	nickname = prompt("Enter your name...").trim();
+	while (!nickname) {
+		nickname = prompt("Enter your name...").trim();
+	}
+}
+</script>
+</head>
+<body>
+<table height="100%">
+	<tr height="100%">
+		<td>
+			<div id="messageDiv" style="vertical-align: top; height: 600px; overflow: auto; width: 600px; position: relative; left: 200px; border: 1px solid #04B4AE; border-radius: 5px; box-shadow: 0 0 5px 3px #04B4AE; color: #666; outline: none;"></div><br>
+			<div id="chatDiv" style="vertical-align: bottom">
+				<input type='text' id="message" style="width: 600px; height: 35px; font-size: 19; border: 1px solid #04B4AE; border-radius: 5px; box-shadow: 0 0 5px 3px #04B4AE; color: #666; outline: none; position: relative; left: 200px;" 
+				placeholder="Type here... then press 'Enter'" onkeyup="sendMessage(this, event)"/>
+			</div>
+		</td>
+	</tr>
+</table>
+</body>
+</html>
