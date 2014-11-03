@@ -1,15 +1,85 @@
 <html>
 <head>
 <title>My Chat</title>
+<style>
+.selectedItem {
+	background-color: #FAAC58;
+	height: 40px;
+	cursor: pointer;
+	margin-bottom: 4px;
+}
+.unSelectedItem {
+	background-color: #A9D0F5;
+	height: 30px;
+	cursor: pointer;
+	margin-bottom: 4px;
+}
+</style>
 <script src="http://192.168.9.103:8080/socket.io/socket.io.js"></script>
 <script>
-var server = io.connect("http://192.168.9.103:8080", {query: "name=" + nickname});
+var server = io.connect("http://192.168.9.103:8080");
 
-server.on("receive-message", function(name, message) {
-	var newElement = document.createElement('p');
-	newElement.innerHTML = "&nbsp;<b>" + name + "		: " + "</b>" + message;
-	document.getElementById("messageDiv").appendChild(newElement);
-	document.getElementById("messageDiv").scrollTop = document.getElementById("messageDiv").scrollHeight;
+server.on("receive-message", function (name, message) {
+
+	var messages = document.getElementById("messageDiv");
+	var currentMessage = "<p>&nbsp;<b>" + name + "		: " + "</b>" + message + "</p>";
+	
+	setSelected("Group");
+	if (currentChatUser != "Group") {
+		server.emit("store-user-messages", currentChatUser, messages.innerHTML);
+	
+		while (messages.firstChild) {
+			messages.removeChild(messages.firstChild);
+		}
+		currentChatUser = "Group";
+		
+		server.emit("get-user-messages", "Group", currentMessage);
+	} else {
+	
+		var newElement = document.createElement('p');
+		newElement.innerHTML = "&nbsp;<b>" + name + "		: " + "</b>" + message;
+		messages.appendChild(newElement);
+		messages.scrollTop = messages.scrollHeight;
+	}
+});
+
+server.on("new-user-joined", function (name) {
+	
+	var newElement = document.createElement("div");
+	newElement.id  = name;
+	newElement.className = "unSelectedItem";
+	newElement.innerHTML = "<b> " + name + " </b>";
+	newElement.onclick = function() {
+		privateChat(name);
+	};
+	document.getElementById("contactDiv").appendChild(newElement);
+	userArray.push(name);
+});
+
+server.on("list-all-users", function (userList) {
+	userArray = userList || [];
+	var contacts = document.getElementById("contactDiv");
+	
+	while (contacts.firstChild) {
+		contacts.removeChild(contacts.firstChild);
+	}
+
+	for (var i = 0, len = userArray.length; i < len; i++) {
+		if (nickname == userArray[i]) {
+			continue;
+		}
+		
+		var newElement = document.createElement("div");
+		newElement.id  = userArray[i];
+		newElement.className = "unSelectedItem";
+		newElement.innerHTML = "<b> " + userArray[i] + " </b>";
+		newElement.onclick = function() {
+			privateChat(this.id);
+		};
+		document.getElementById("contactDiv").appendChild(newElement);
+	}
+	
+	setSelected("Group");
 });
 	
 function sendMessage(textbox, evt) {
@@ -20,12 +90,27 @@ function sendMessage(textbox, evt) {
 		if (!nickname) {
 			getName();
 		}
-		server.emit("send-message", {name: nickname, message: textbox.value});
+		
+		if (!hasJoined) { 
+			return; 
+		}
+		
+		if (currentChatUser != "Group") {
+			server.emit("send-message-private", {name: nickname, 
+												'private-chat-user' : currentChatUser, 
+												message: textbox.value});
+		} else {
+			server.emit("send-message", {name: nickname, message: textbox.value});
+		}
 		textbox.value = '';
 	}
 }
 
 var nickname;
+var hasJoined = false;
+var currentChatUser = 'Group';
+var isPrivateChat = false;
+var userArray;
 getName();
 
 function getName() {
@@ -33,19 +118,95 @@ function getName() {
 	while (!nickname) {
 		nickname = prompt("Enter your name...").trim();
 	}
+	if (nickname) {
+		server.emit("join", nickname);
+		hasJoined = true;
+	}
 }
+
+function privateChat(id) {
+	var messages = document.getElementById("messageDiv");
+	setSelected(id);
+	
+	if (currentChatUser != id) {
+	
+		server.emit("store-user-messages", currentChatUser, messages.innerHTML);
+		
+		while (messages.firstChild) {
+			messages.removeChild(messages.firstChild);
+		}
+
+		currentChatUser = id;
+		
+		server.emit("get-user-messages", id);
+	}
+}
+
+server.on("list-user-messages", function (messages) {
+	if (!messages) {
+		return;
+	}
+	document.getElementById("messageDiv").innerHTML = messages;
+	document.getElementById("messageDiv").scrollTop = document.getElementById("messageDiv").scrollHeight;
+});
+
+server.on("receive-message-private", function (name, message) {
+
+	var messages = document.getElementById("messageDiv");
+	var currentMessage = "<p>&nbsp;<b>" + name + "		: " + "</b>" + message + "</p>";
+	
+	if (name != currentChatUser && name != "You") {
+		server.emit("store-user-messages", currentChatUser, messages.innerHTML);
+	
+		while (messages.firstChild) {
+			messages.removeChild(messages.firstChild);
+		}
+		currentChatUser = name;
+		setSelected(name);
+		
+		server.emit("get-user-messages", currentChatUser, currentMessage);
+	} else {
+	
+		var newElement = document.createElement('p');
+		newElement.innerHTML = "&nbsp;<b>" + name + "		: " + "</b>" + message;
+		messages.appendChild(newElement);
+		messages.scrollTop = messages.scrollHeight;
+	}
+});
+
+function setSelected(id) {
+
+	for (var i = 0, len = userArray.length; i < len; i++) {
+	
+		if (id != userArray[i]) {
+			document.getElementById(userArray[i]).className = "unSelectedItem";
+		} else {		
+			document.getElementById(id).className = "selectedItem";
+		}
+	}
+}
+
 </script>
 </head>
 <body>
-<table height="100%">
-	<tr height="100%">
+<table cellpadding="10" cellspacing="0" >
+	<tr>
 		<td>
-			<div id="messageDiv" style="vertical-align: top; height: 600px; overflow: auto; width: 600px; position: relative; left: 200px; border: 1px solid #04B4AE; border-radius: 5px; box-shadow: 0 0 5px 3px #04B4AE; color: #666; outline: none;"></div><br>
+			<div id="messageDiv" style="vertical-align: top; height: 550px; overflow: auto; width: 550px; position: relative; left: 200px; border: 1px solid #04B4AE; border-radius: 5px; box-shadow: 0 0 5px 3px #04B4AE; color: #666; outline: none;"></div>
+		</td>
+		<td>
+			<div id="contactDiv" style="vertical-align: top; height: 550px; overflow: auto; width: 170px; position: relative; left: 192px; border: 1px solid #04B4AE; border-radius: 5px; box-shadow: 0 0 5px 3px #04B4AE; color: #666; outline: none;">
+			</div>
+		</td>
+	</tr>
+	<tr>
+		<td>
 			<div id="chatDiv" style="vertical-align: bottom">
-				<input type='text' id="message" style="width: 600px; height: 35px; font-size: 19; border: 1px solid #04B4AE; border-radius: 5px; box-shadow: 0 0 5px 3px #04B4AE; color: #666; outline: none; position: relative; left: 200px;" 
+				<input type='text' id="message" style="width: 550px; height: 35px; font-size: 19; border: 1px solid #04B4AE; border-radius: 5px; box-shadow: 0 0 5px 3px #04B4AE; color: #666; outline: none; position: relative; left: 200px;" 
 				placeholder="Type here... then press 'Enter'" onkeyup="sendMessage(this, event)"/>
 			</div>
 		</td>
+		<td />
 	</tr>
 </table>
 </body>
