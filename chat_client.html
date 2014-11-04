@@ -22,7 +22,11 @@ var server = io.connect("http://192.168.9.103:8080");
 server.on("receive-message", function (name, message) {
 
 	var messages = document.getElementById("messageDiv");
-	var currentMessage = "<p>&nbsp;<b>" + name + "		: " + "</b>" + message + "</p>";
+	var currentMessage = "<p>&nbsp;<b>" + name 
+						 + " : " + "</b><font size='3.5'>" + message 
+						 + "</font>&nbsp;&nbsp;&nbsp;" 
+						 +"<font size='1.5' color='#A4A4A4'>" + getTime() 
+						 +"</font></p>";
 	
 	setSelected("Group");
 	if (currentChatUser != "Group") {
@@ -37,7 +41,10 @@ server.on("receive-message", function (name, message) {
 	} else {
 	
 		var newElement = document.createElement('p');
-		newElement.innerHTML = "&nbsp;<b>" + name + "		: " + "</b>" + message;
+		newElement.innerHTML = "&nbsp;<b>" + name + " : " + "</b><font size='3.5'>" + message
+								+ "</font>&nbsp;&nbsp;&nbsp;" 
+								+"<font size='1.5' color='#A4A4A4'>" + getTime() 
+								+"</font></p>";
 		messages.appendChild(newElement);
 		messages.scrollTop = messages.scrollHeight;
 	}
@@ -153,7 +160,11 @@ server.on("list-user-messages", function (messages) {
 server.on("receive-message-private", function (name, message) {
 
 	var messages = document.getElementById("messageDiv");
-	var currentMessage = "<p>&nbsp;<b>" + name + "		: " + "</b>" + message + "</p>";
+	var currentMessage = "<p>&nbsp;<b>" + name + "		: "
+						 + "</b><font size='3.5'>" + message 
+						 + "</font>&nbsp;&nbsp;&nbsp;" 
+						 +"<font size='1.5' color='#A4A4A4'>" + getTime() 
+						 +"</font></p>";
 	
 	if (name != currentChatUser && name != "You") {
 		server.emit("store-user-messages", currentChatUser, messages.innerHTML);
@@ -168,7 +179,11 @@ server.on("receive-message-private", function (name, message) {
 	} else {
 	
 		var newElement = document.createElement('p');
-		newElement.innerHTML = "&nbsp;<b>" + name + "		: " + "</b>" + message;
+		newElement.innerHTML = "&nbsp;<b>" + name + "		: " 
+								+ "</b><font size='3.5'>" + message
+								+ "</font>&nbsp;&nbsp;&nbsp;" 
+								+"<font size='1.5' color='#A4A4A4'>" + getTime() 
+								+"</font></p>";
 		messages.appendChild(newElement);
 		messages.scrollTop = messages.scrollHeight;
 	}
@@ -178,12 +193,17 @@ function setSelected(id) {
 
 	for (var i = 0, len = userArray.length; i < len; i++) {
 	
-		if (id != userArray[i]) {
+		if (id != userArray[i] && document.getElementById(userArray[i])) {
 			document.getElementById(userArray[i]).className = "unSelectedItem";
-		} else {		
+		} else {	
 			document.getElementById(id).className = "selectedItem";
 		}
 	}
+}
+
+function getTime() {
+	var date = new Date();
+	return date.toLocaleDateString() + " " + date.toLocaleTimeString();
 }
 
 </script>
